@@ -1,62 +1,59 @@
+# .github/workflows/convert-figma.yml
 name: convert
 
 on:
   workflow_dispatch:
     inputs:
+      project_name:
+        description: 'Name for the generated Flutter project (must be a valid Dart package name)'
+        required: true
       figma_file_key:
         description: 'Your Figma file key'
         required: true
       figma_token:
-        description: 'Your Figma API token'
-        required: true
-      project_name:
-        description: 'Output folder name'
-        required: true
-      page:
-        description: 'Exact name of the CANVAS page in Figma'
+        description: 'Your Figma access token'
         required: true
 
 jobs:
   convert:
     runs-on: ubuntu-24.04
-
     steps:
-      - name: 🛎️ Checkout repo
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Dart
+      - name: Setup Dart SDK
         uses: dart-lang/setup-dart@v1
         with:
           sdk: '2.19.6'
 
-      - name: 📦 Clone Parabeac
+      - name: Clone Parabeac core
         run: |
           git clone --depth 1 --branch v4.0.0 https://github.com/Parabeac/parabeac-core.git parabeac
           rm -rf parabeac/pb-scripts
 
-      - name: 📥 Get dependencies
+      - name: Install Parabeac dependencies
         run: |
           cd parabeac
           dart pub get
 
-      - name: 🚀 Run Parabeac on “${{ inputs.page }}”
+      - name: Generate Flutter code
         run: |
-          mkdir -p generated/${{ inputs.project_name }}
           cd parabeac
+          mkdir -p ../generated/${{ github.event.inputs.project_name }}
           dart run parabeac.dart \
-            -f "${{ inputs.figma_file_key }}" \
-            -k "${{ inputs.figma_token }}" \
-            -p "${{ inputs.page }}" \
-            -o "../generated/${{ inputs.project_name }}"
+            -f "${{ github.event.inputs.figma_file_key }}" \
+            -k "${{ github.event.inputs.figma_token }}" \
+            -n "${{ github.event.inputs.project_name }}" \
+            -o "../generated/${{ github.event.inputs.project_name }}"
 
-      - name: 📂 List what was generated
+      - name: List output
         run: |
-          echo "=== generated/${{ inputs.project_name }} ==="
-          ls -R generated/${{ inputs.project_name }} || echo "(nothing here!)"
+          echo "=== generated/${{ github.event.inputs.project_name }} ==="
+          ls -R generated/${{ github.event.inputs.project_name }} || echo "(directory not found)"
 
-      - name: 📤 Upload generated Flutter project
+      - name: Upload generated Flutter project
         uses: actions/upload-artifact@v4
         with:
           name: flutter_project
-          path: generated/${{ inputs.project_name }}/**
-          if-no-files-found: warn
+          path: generated/${{ github.event.inputs.project_name }}/**
+
