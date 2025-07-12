@@ -21,28 +21,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Dart 2.x (compatible with Parabeac Core)
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: '2.19.6'
+      - name: Pull Parabeac Docker image
+        run: docker pull parabeac/parabeac-core:latest
 
-      - name: Clone Parabeac Core
-        run: git clone https://github.com/Parabeac/parabeac-core.git parabeac
-
-      - name: Install Parabeac dependencies
+      - name: Generate Flutter via Parabeac Docker
         run: |
-          cd parabeac
-          dart pub get
-
-      - name: Generate Flutter for ${{ github.event.inputs.project_name }}
-        run: |
-          # Run from inside parabeac folder so pb-scripts/* are found
-          cd parabeac
-          mkdir -p ../generated/${{ github.event.inputs.project_name }}
-          dart --enable-asserts parabeac.dart \
+          mkdir -p generated/${{ github.event.inputs.project_name }}
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            parabeac/parabeac-core:latest \
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
-            -o ../generated/${{ github.event.inputs.project_name }}
+            -o generated/${{ github.event.inputs.project_name }}
 
       - name: Commit & push generated code
         run: |
