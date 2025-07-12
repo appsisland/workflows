@@ -30,14 +30,14 @@ jobs:
         run: |
           git clone --depth 1 --branch v4.0.0 \
             https://github.com/Parabeac/parabeac-core.git parabeac
-          # skip Sketch-only installer
+          # remove the old Sketch-only installer
           rm -rf parabeac/pb-scripts
           cd parabeac
           dart pub get
 
       - name: Run Parabeac conversion
         run: |
-          # create exactly the output dir we want
+          # make sure the exact output folder exists
           mkdir -p "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
 
           cd parabeac
