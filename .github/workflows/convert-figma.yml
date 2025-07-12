@@ -17,14 +17,12 @@ jobs:
   parabeac:
     runs-on: ubuntu-latest
     env:
-      # Skip SketchAssetConverter (you already set this)
       SAC_ENDPOINT: "1"
-      # Turn on Parabeac verbose logging
       PBDL_LOG_LEVEL: DEBUG
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -33,7 +31,7 @@ jobs:
         with:
           sdk: '2.19.6'
 
-      - name: Debug: Dart & env
+      - name: "Debug: Dart & env"
         run: |
           dart --version
           echo "Runner env:"
@@ -72,7 +70,7 @@ jobs:
           echo "📂 Contents of generated/${{ github.event.inputs.project_name }}:"
           ls -R ../generated/${{ github.event.inputs.project_name }} || echo " (no files!)"
 
-      - name: Commit & push generated code
+      - name: "Commit & push generated code"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
