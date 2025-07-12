@@ -17,78 +17,66 @@ jobs:
   parabeac:
     runs-on: ubuntu-latest
     env:
-      SAC_ENDPOINT: "1"             # skip SketchAssetConverter
+      # Skip SketchAssetConverter (you already set this)
+      SAC_ENDPOINT: "1"
+      # Turn on Parabeac verbose logging
+      PBDL_LOG_LEVEL: DEBUG
 
     steps:
-      # 1) Checkout repository in full
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      # 2) Debug: confirm Dart is available
-      - name: Set up Dart & verify
+      - name: Set up Dart 2.x (compatible with Parabeac Core)
         uses: dart-lang/setup-dart@v1
         with:
           sdk: '2.19.6'
-      - name: Dart version
-        run: dart --version
 
-      # 3) List Parabeac Core branches/tags for debug
-      - name: List Parabeac Core tags
+      - name: Debug: Dart & env
         run: |
-          echo "Available branches and tags:";
-          git ls-remote --refs https://github.com/Parabeac/parabeac-core.git
+          dart --version
+          echo "Runner env:"
+          env
 
-      # 4) Clone a known-good Parabeac release (e.g., v4.0.0)
-      - name: Clone Parabeac Core at tag v4.0.0
+      - name: Clone Parabeac Core @ v4.0.0
         run: |
           git clone --depth=1 --branch v4.0.0 https://github.com/Parabeac/parabeac-core.git parabeac
-        continue-on-error: false
+          echo "Parabeac-Core checked out at:"
+          (cd parabeac && git rev-parse HEAD)
 
-      # 5) Install dependencies and inspect folder
+      - name: List Parabeac Core files
+        run: |
+          ls -R parabeac
+
       - name: Install Parabeac dependencies
-        working-directory: parabeac
         run: |
-          echo "Listing Parabeac directory contents:";
-          ls -R .;
-          dart pub get;
+          cd parabeac
+          dart pub get
 
-      # 6) Debug: verify CLI entrypoint
-      - name: Parabeac CLI entrypoint check
-        working-directory: parabeac
-        run: |
-          echo "Script files:";
-          ls pb-scripts;
-          echo "CLI dart file:";
-          ls *.dart
-
-      # 7) Generate Flutter code with verbose/debug logging
       - name: Generate Flutter for ${{ github.event.inputs.project_name }}
-        working-directory: parabeac
         run: |
-          echo "Output folder contents before generation:";
-          ls -R ../generated || true;
-          mkdir -p ../generated/${{ github.event.inputs.project_name }};
-          echo "Running Parabeac with debug flags...";
+          mkdir -p generated/${{ github.event.inputs.project_name }}
+          cd parabeac
+          echo "→ Generating from file key: ${{ github.event.inputs.figma_file_key }}"
+          echo "→ Output dir: ../generated/${{ github.event.inputs.project_name }}"
           dart --enable-asserts parabeac.dart \
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
             -o ../generated/${{ github.event.inputs.project_name }} \
             --verbose \
-            --logLevel debug;
+          || { echo "‼️ Parabeac failed with exit code $?"; exit 1; }
 
-      # 8) Post-generation debug: show generated files
-      - name: Inspect generated output
+      - name: List generated output
         run: |
-          echo "Generated folder structure:";
-          ls -R generated/${{ github.event.inputs.project_name }};
+          echo "📂 Contents of generated/${{ github.event.inputs.project_name }}:"
+          ls -R ../generated/${{ github.event.inputs.project_name }} || echo " (no files!)"
 
-      # 9) Commit and push generated code
       - name: Commit & push generated code
         run: |
-          git config user.name "github-actions[bot]";
-          git config user.email "github-actions[bot]@users.noreply.github.com";
-          git add generated/${{ github.event.inputs.project_name }};
-          git diff-index --quiet HEAD && echo "No changes to commit." || git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}";
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add generated/${{ github.event.inputs.project_name }}
+          git diff-index --quiet HEAD \
+            || git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}"
           git push
