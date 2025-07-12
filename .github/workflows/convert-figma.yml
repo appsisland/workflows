@@ -21,10 +21,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Dart
+      - name: Set up Dart 2.x (compatible with Parabeac Core)
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: stable
+          sdk: '2.19.6'
 
       - name: Clone Parabeac Core
         run: |
@@ -38,7 +38,6 @@ jobs:
       - name: Generate Flutter for ${{ github.event.inputs.project_name }}
         run: |
           mkdir -p generated/${{ github.event.inputs.project_name }}
-          # Run the Parabeac CLI from the repo root
           dart --enable-asserts parabeac/parabeac.dart \
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
