@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       figma_file_key:
-        description: 'Figma File Key (the ID after /file/ in your Figma URL)'
+        description: 'Figma File Key (the ID after `/file/` in your Figma URL)'
         required: true
       figma_token:
         description: 'Your Figma Personal Access Token'
@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set up Dart 2.x (compatible with Parabeac Core)
@@ -30,8 +30,7 @@ jobs:
           sdk: '2.19.6'
 
       - name: Clone Parabeac Core
-        run: |
-          git clone --depth=1 https://github.com/Parabeac/parabeac_core.git parabeac
+        run: git clone --depth=1 https://github.com/Parabeac/parabeac_core.git parabeac
 
       - name: Install Parabeac dependencies
         working-directory: parabeac
@@ -42,14 +41,13 @@ jobs:
         env:
           PB_METRICS: 'false'
         run: |
-          # Ensure the parent 'generated' directory exists
-          mkdir -p "${{ github.workspace }}/generated"
-          # Let Parabeac name its own subfolder (e.g. 'generated/Raqi1')
+          # Create the exact output folder up-front
+          mkdir -p "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
+          # Run the CLI, outputting directly into that folder
           dart run lib/main.dart \
             -f "${{ github.event.inputs.figma_file_key }}" \
             -k "${{ github.event.inputs.figma_token }}" \
-            -o "${{ github.workspace }}/generated" \
-            -n "${{ github.event.inputs.project_name }}" \
+            -o "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}" \
             --project-type screens
 
       - name: Commit & push generated code
