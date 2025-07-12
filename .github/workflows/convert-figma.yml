@@ -16,6 +16,7 @@ on:
 jobs:
   convert:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,14 +36,22 @@ jobs:
 
       - name: Run Parabeac conversion
         run: |
+          mkdir -p "${{ github.workspace }}/generated"
           cd parabeac
           dart parabeac.dart \
             -f "${{ github.event.inputs.figma_file_key }}" \
             -k "${{ github.event.inputs.figma_token }}" \
             -o "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
+      
+      - name: Show generated files
+        run: |
+          echo "=== generated/${{ github.event.inputs.project_name }} ==="
+          ls -R "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}" || echo "(directory not found)"
 
       - name: Upload generated Flutter code
         uses: actions/upload-artifact@v4
         with:
           name: flutter_project
-          path: generated/${{ github.event.inputs.project_name }}
+          # upload everything under that folder (if it exists)
+          path: generated/${{ github.event.inputs.project_name }}/**
+
