@@ -17,46 +17,47 @@ jobs:
   parabeac:
     runs-on: ubuntu-latest
     steps:
-      # 1) Checkout your repo in full (no sparse/shallow modes)
+      # 1) Checkout repository
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2) Install a Dart 2.x SDK so we satisfy Parabeac Core’s constraint <3.0.0
-      - name: Set up Dart 2.x (compatible with Parabeac Core)
+      # 2) Set up Dart 2.x (compatible with Parabeac Core)
+      - name: Set up Dart
         uses: dart-lang/setup-dart@v1
         with:
           sdk: '2.19.6'
 
-      # 3) Clone the Parabeac Core repo into ./parabeac
+      # 3) Clone Parabeac Core (use specific branch or commit for stability)
       - name: Clone Parabeac Core
-        run: git clone https://github.com/Parabeac/parabeac-core.git parabeac
+        run: |
+          git clone --branch main https://github.com/Parabeac/parabeac-core.git parabeac
+          cd parabeac
+          git checkout <commit_or_tag> # Replace with a specific commit or tag if needed
 
-      # 4) Install its Dart dependencies (skipping SketchAssetConverter)
+      # 4) Install Parabeac dependencies
       - name: Install Parabeac dependencies
-        env:
-          SAC_ENDPOINT: "1"    # skip SketchAssetConverter step
         run: |
           cd parabeac
           dart pub get
-
-      # 5) Generate the Flutter code *from inside* the parabeac folder
-      - name: Generate Flutter for ${{ github.event.inputs.project_name }}
         env:
-          SAC_ENDPOINT: "1"    # ensure the install script is skipped
+          SAC_ENDPOINT: "1" # Skip SketchAssetConverter
+
+      # 5) Generate Flutter code
+      - name: Generate Flutter for ${{ github.event.inputs.project_name }}
         run: |
-          # create the output dir one level up
-          mkdir -p generated/${{ github.event.inputs.project_name }}
-          # cd into parabeac so pb-scripts/ is on the PATH
+          mkdir -p ../generated/${{ github.event.inputs.project_name }}
           cd parabeac
-          # generate code (make sure all Figma artboards are real "Frames")
           dart --enable-asserts parabeac.dart \
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
-            -o ../generated/${{ github.event.inputs.project_name }}
+            -o ../generated/${{ github.event.inputs.project_name }} \
+            --verbose
+        env:
+          SAC_ENDPOINT: "1"
 
-      # 6) Commit & push that generated folder back to your repo
+      # 6) Commit and push generated code
       - name: Commit & push generated code
         run: |
           git config user.name "github-actions[bot]"
