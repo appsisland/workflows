@@ -33,19 +33,24 @@ jobs:
       - name: Clone Parabeac Core
         run: git clone https://github.com/Parabeac/parabeac-core.git parabeac
 
-      # 4) Install its Dart dependencies
+      # 4) Install its Dart dependencies (skipping SketchAssetConverter)
       - name: Install Parabeac dependencies
+        env:
+          SAC_ENDPOINT: "1"    # skip SketchAssetConverter step
         run: |
           cd parabeac
           dart pub get
 
       # 5) Generate the Flutter code *from inside* the parabeac folder
       - name: Generate Flutter for ${{ github.event.inputs.project_name }}
+        env:
+          SAC_ENDPOINT: "1"    # ensure the install script is skipped
         run: |
           # create the output dir one level up
           mkdir -p generated/${{ github.event.inputs.project_name }}
           # cd into parabeac so pb-scripts/ is on the PATH
           cd parabeac
+          # generate code (make sure all Figma artboards are real "Frames")
           dart --enable-asserts parabeac.dart \
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
@@ -57,5 +62,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add generated/${{ github.event.inputs.project_name }}
-          git diff-index --quiet HEAD || git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}"
+          git diff-index --quiet HEAD || \
+            git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}"
           git push
