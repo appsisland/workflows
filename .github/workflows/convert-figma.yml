@@ -23,20 +23,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2) Set up Dart 2.x (compatible with Parabeac Core)
+      # 2) Set up Dart
       - name: Set up Dart
         uses: dart-lang/setup-dart@v1
         with:
           sdk: '2.19.6'
 
-      # 3) Clone Parabeac Core (use specific branch or commit for stability)
+      # 3) Debug: List available branches in Parabeac Core
+      - name: List Parabeac Core branches
+        run: |
+          git ls-remote --heads https://github.com/Parabeac/parabeac-core.git
+
+      # 4) Clone Parabeac Core
       - name: Clone Parabeac Core
         run: |
-          git clone --branch main https://github.com/Parabeac/parabeac-core.git parabeac
+          git clone --branch master https://github.com/Parabeac/parabeac-core.git parabeac || {
+            echo "Failed to clone the repository. Check if the branch exists or repository is accessible."
+            exit 1
+          }
           cd parabeac
-          git checkout <commit_or_tag> # Replace with a specific commit or tag if needed
+          git checkout master # Replace with a specific commit or tag if needed, e.g., git checkout 7b2f1a3
+        continue-on-error: false
 
-      # 4) Install Parabeac dependencies
+      # 5) Install Parabeac dependencies
       - name: Install Parabeac dependencies
         run: |
           cd parabeac
@@ -44,7 +53,7 @@ jobs:
         env:
           SAC_ENDPOINT: "1" # Skip SketchAssetConverter
 
-      # 5) Generate Flutter code
+      # 6) Generate Flutter code
       - name: Generate Flutter for ${{ github.event.inputs.project_name }}
         run: |
           mkdir -p ../generated/${{ github.event.inputs.project_name }}
@@ -57,7 +66,7 @@ jobs:
         env:
           SAC_ENDPOINT: "1"
 
-      # 6) Commit and push generated code
+      # 7) Commit and push generated code
       - name: Commit & push generated code
         run: |
           git config user.name "github-actions[bot]"
@@ -66,3 +75,4 @@ jobs:
           git diff-index --quiet HEAD || \
             git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}"
           git push
+        continue-on-error: false
