@@ -62,7 +62,6 @@ jobs:
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
             -o ../generated/${{ github.event.inputs.project_name }} \
-            --verbose \
           || { echo "‼️ Parabeac failed with exit code $?"; exit 1; }
 
       - name: List generated output
