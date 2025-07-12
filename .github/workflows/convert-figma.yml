@@ -52,28 +52,28 @@ jobs:
           cd parabeac
           dart pub get
 
-      - name: Generate Flutter for ${{ github.event.inputs.project_name }}
+      - name: Generate Flutter for "${{ github.event.inputs.project_name }}"
         run: |
-          mkdir -p generated/${{ github.event.inputs.project_name }}
+          mkdir -p "generated/${{ github.event.inputs.project_name }}"
           cd parabeac
           echo "→ Generating from file key: ${{ github.event.inputs.figma_file_key }}"
           echo "→ Output dir: ../generated/${{ github.event.inputs.project_name }}"
           dart --enable-asserts parabeac.dart \
-            -f ${{ github.event.inputs.figma_file_key }} \
-            -k ${{ github.event.inputs.figma_token }} \
-            -o ../generated/${{ github.event.inputs.project_name }} \
+            -f "${{ github.event.inputs.figma_file_key }}" \
+            -k "${{ github.event.inputs.figma_token }}" \
+            -o "../generated/${{ github.event.inputs.project_name }}" \
           || { echo "‼️ Parabeac failed with exit code $?"; exit 1; }
 
       - name: List generated output
         run: |
           echo "📂 Contents of generated/${{ github.event.inputs.project_name }}:"
-          ls -R ../generated/${{ github.event.inputs.project_name }} || echo " (no files!)"
+          ls -R "../generated/${{ github.event.inputs.project_name }}" || echo " (no files!)"
 
       - name: "Commit & push generated code"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add generated/${{ github.event.inputs.project_name }}
+          git add "generated/${{ github.event.inputs.project_name }}"
           git diff-index --quiet HEAD \
             || git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}"
           git push
