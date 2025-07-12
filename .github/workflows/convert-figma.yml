@@ -27,8 +27,7 @@ jobs:
           sdk: '2.19.6'
 
       - name: Clone Parabeac Core
-        run: |
-          git clone https://github.com/Parabeac/parabeac-core.git parabeac
+        run: git clone https://github.com/Parabeac/parabeac-core.git parabeac
 
       - name: Install Parabeac dependencies
         run: |
@@ -37,11 +36,13 @@ jobs:
 
       - name: Generate Flutter for ${{ github.event.inputs.project_name }}
         run: |
-          mkdir -p generated/${{ github.event.inputs.project_name }}
-          dart --enable-asserts parabeac/parabeac.dart \
+          # Run from inside parabeac folder so pb-scripts/* are found
+          cd parabeac
+          mkdir -p ../generated/${{ github.event.inputs.project_name }}
+          dart --enable-asserts parabeac.dart \
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
-            -o generated/${{ github.event.inputs.project_name }}
+            -o ../generated/${{ github.event.inputs.project_name }}
 
       - name: Commit & push generated code
         run: |
