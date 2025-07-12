@@ -1,61 +1,61 @@
-# .github/workflows/convert-figma.yml
-
 name: Convert Figma → Flutter
 
 on:
   workflow_dispatch:
     inputs:
       figma_file_key:
-        description: 'Figma File Key (the ID after `/file/` in your Figma URL)'
+        description: 'Figma File Key'
         required: true
       figma_token:
-        description: 'Your Figma Personal Access Token'
+        description: 'Figma Personal Access Token'
         required: true
       project_name:
-        description: 'Directory name for generated Flutter code'
+        description: 'Project name (used as folder)'
         required: true
 
 jobs:
   parabeac:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-
+    runs-on: ubuntu-latest
     steps:
+      # 1) Checkout your repo in full (no sparse/shallow modes)
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
+      # 2) Install a Dart 2.x SDK so we satisfy Parabeac Core’s constraint <3.0.0
       - name: Set up Dart 2.x (compatible with Parabeac Core)
         uses: dart-lang/setup-dart@v1
         with:
           sdk: '2.19.6'
 
+      # 3) Clone the Parabeac Core repo into ./parabeac
       - name: Clone Parabeac Core
-        run: git clone --depth=1 https://github.com/Parabeac/parabeac_core.git parabeac
+        run: git clone https://github.com/Parabeac/parabeac-core.git parabeac
 
+      # 4) Install its Dart dependencies
       - name: Install Parabeac dependencies
-        working-directory: parabeac
-        run: dart pub get
-
-      - name: Generate Flutter code
-        working-directory: parabeac
-        env:
-          PB_METRICS: 'false'
         run: |
-          # Create the exact output folder up-front
-          mkdir -p "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
-          # Run the CLI, outputting directly into that folder
-          dart run lib/main.dart \
-            -f "${{ github.event.inputs.figma_file_key }}" \
-            -k "${{ github.event.inputs.figma_token }}" \
-            -o "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}" \
-            --project-type screens
+          cd parabeac
+          dart pub get
 
+      # 5) Generate the Flutter code *from inside* the parabeac folder
+      - name: Generate Flutter for ${{ github.event.inputs.project_name }}
+        run: |
+          # create the output dir one level up
+          mkdir -p generated/${{ github.event.inputs.project_name }}
+          # cd into parabeac so pb-scripts/ is on the PATH
+          cd parabeac
+          dart --enable-asserts parabeac.dart \
+            -f ${{ github.event.inputs.figma_file_key }} \
+            -k ${{ github.event.inputs.figma_token }} \
+            -o ../generated/${{ github.event.inputs.project_name }}
+
+      # 6) Commit & push that generated folder back to your repo
       - name: Commit & push generated code
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add generated/${{ github.event.inputs.project_name }}
-          git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}" || echo "No changes to commit"
+          git diff-index --quiet HEAD || git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}"
           git push
