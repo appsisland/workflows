@@ -1,0 +1,74 @@
+name: Convert Figma → Flutter (DhiWise)
+
+on:
+  workflow_dispatch:
+    inputs:
+      figma_file_key:
+        description: 'Your Figma file key'
+        required: true
+      figma_token:
+        description: 'Your Figma API token'
+        required: true
+      dhiwise_api_key:
+        description: 'Your DhiWise API key'
+        required: true
+      project_name:
+        description: 'Output folder name for generated Flutter project'
+        required: true
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install jq & curl
+        run: |
+          sudo apt update && sudo apt install -y jq curl
+
+      - name: Trigger DhiWise conversion
+        id: convert
+        run: |
+          # call DhiWise API to start build
+          RESPONSE=$(curl -s -X POST https://api.dhiwise.com/v1/convert/figma \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ github.event.inputs.dhiwise_api_key }}" \
+            -d '{
+                 "figma_file_key": "'"${{ github.event.inputs.figma_file_key }}"'",
+                 "figma_token": "'"${{ github.event.inputs.figma_token }}"'",
+                 "platform": "flutter"
+               }')
+          BUILD_ID=$(echo "$RESPONSE" | jq -r .buildId)
+          echo "Build started: $BUILD_ID"
+
+          # poll until complete
+          while true; do
+            sleep 10
+            STATUS=$(curl -s "https://api.dhiwise.com/v1/builds/$BUILD_ID" \
+              -H "Authorization: Bearer ${{ github.event.inputs.dhiwise_api_key }}" \
+              | jq -r .status)
+            echo "Current status: $STATUS"
+            [ "$STATUS" != "in_progress" ] && break
+          done
+
+          if [ "$STATUS" != "completed" ]; then
+            echo "Build failed or timed out: $STATUS"
+            exit 1
+          fi
+
+          # download artifact
+          DOWNLOAD_URL=$(curl -s "https://api.dhiwise.com/v1/builds/$BUILD_ID/download" \
+            -H "Authorization: Bearer ${{ github.event.inputs.dhiwise_api_key }}" \
+            | jq -r .url)
+          mkdir -p generated/${{ github.event.inputs.project_name }}
+          curl -L "$DOWNLOAD_URL" -o generated/${{ github.event.inputs.project_name }}.zip
+          unzip -q generated/${{ github.event.inputs.project_name }}.zip \
+                -d generated/${{ github.event.inputs.project_name }}
+
+      - name: Upload generated Flutter code
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter_project
+          path: generated/${{ github.event.inputs.project_name }}/**
