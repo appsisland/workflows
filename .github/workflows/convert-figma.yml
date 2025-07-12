@@ -1,3 +1,5 @@
+# .github/workflows/convert-figma.yml
+
 name: Convert Figma → Flutter
 
 on:
@@ -16,7 +18,7 @@ on:
 jobs:
   parabeac:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15  # fail if it hangs
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repo
@@ -28,7 +30,8 @@ jobs:
           sdk: '2.19.6'
 
       - name: Clone Parabeac Core
-        run: git clone --depth=1 https://github.com/Parabeac/parabeac_core.git parabeac
+        run: |
+          git clone --depth=1 https://github.com/Parabeac/parabeac_core.git parabeac
 
       - name: Install Parabeac dependencies
         working-directory: parabeac
@@ -39,11 +42,13 @@ jobs:
         env:
           PB_METRICS: 'false'
         run: |
-          mkdir -p "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
+          # Ensure the parent 'generated' directory exists
+          mkdir -p "${{ github.workspace }}/generated"
+          # Let Parabeac name its own subfolder (e.g. 'generated/Raqi1')
           dart run lib/main.dart \
             -f "${{ github.event.inputs.figma_file_key }}" \
             -k "${{ github.event.inputs.figma_token }}" \
-            -o "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}" \
+            -o "${{ github.workspace }}/generated" \
             -n "${{ github.event.inputs.project_name }}" \
             --project-type screens
 
