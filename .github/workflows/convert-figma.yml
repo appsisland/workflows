@@ -1,5 +1,4 @@
-# .github/workflows/convert-figma.yml
-name: Parabeac Flutter Generation
+name: Convert Figma → Flutter
 
 on:
   workflow_dispatch:
@@ -22,34 +21,34 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Dart SDK
+      - name: Set up Dart 2.x (compatible with Parabeac Core)
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: stable
+          sdk: '2.19.6'
 
-      - name: Clone Parabeac-Core
+      - name: Clone Parabeac Core
         run: |
           git clone --depth=1 https://github.com/Parabeac/parabeac_core.git parabeac
 
-      - name: Install dependencies
+      - name: Install Parabeac dependencies
         working-directory: parabeac
         run: dart pub get
 
-      - name: Generate Flutter code with Parabeac
+      - name: Generate Flutter code
         working-directory: parabeac
         run: |
+          mkdir -p ${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}
           dart run lib/main.dart \
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
-            -o ${{ github.workspace }}/generated/${{ github.event.inputs.project_name }} \
-            --project-type screens
+            -o ${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}
 
       - name: Commit & push generated code
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add generated/${{ github.event.inputs.project_name }}
-          git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}"
+          git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}" || echo "No changes to commit"
           git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
