@@ -1,6 +1,5 @@
 name: Convert Figma → Flutter
 
-# Trigger manually (and via API) with three inputs
 on:
   workflow_dispatch:
     inputs:
@@ -18,26 +17,22 @@ jobs:
   convert:
     runs-on: ubuntu-latest
     steps:
-      # 1) Check out your workflow repo
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2) Install Dart
       - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
         with:
           sdk: '2.19.6'
 
-      # 3) Clone & prepare Parabeac
       - name: Fetch Parabeac v4.0.0
         run: |
           git clone --depth 1 --branch v4.0.0 \
             https://github.com/Parabeac/parabeac-core.git parabeac
-          rm -rf parabeac/pb-scripts     # skip Sketch installer
+          rm -rf parabeac/pb-scripts
           cd parabeac
           dart pub get
 
-      # 4) Run Parabeac with your inputs
       - name: Run Parabeac conversion
         run: |
           cd parabeac
@@ -46,9 +41,8 @@ jobs:
             -k "${{ github.event.inputs.figma_token }}" \
             -o "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
 
-      # 5) Upload the result as a build artifact
       - name: Upload generated Flutter code
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: flutter_project
           path: generated/${{ github.event.inputs.project_name }}
