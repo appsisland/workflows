@@ -1,47 +1,54 @@
-# .github/workflows/convert-figma.yml
 name: Convert Figma → Flutter
 
+# Trigger manually (and via API) with three inputs
 on:
   workflow_dispatch:
+    inputs:
+      figma_file_key:
+        description: 'Your Figma file key'
+        required: true
+      figma_token:
+        description: 'Your Figma API token'
+        required: true
+      project_name:
+        description: 'Output folder name for generated Flutter project'
+        required: true
 
 jobs:
-  parabeac:
+  convert:
     runs-on: ubuntu-latest
-    env:
-      FIGMA_FILE_KEY: ${{ secrets.FIGMA_FILE_KEY }}
-      FIGMA_TOKEN:    ${{ secrets.FIGMA_TOKEN }}
-
     steps:
-      - name: Checkout repo
+      # 1) Check out your workflow repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Dart 2.19 SDK
+      # 2) Install Dart
+      - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
         with:
           sdk: '2.19.6'
 
-      - name: Clone Parabeac Core
+      # 3) Clone & prepare Parabeac
+      - name: Fetch Parabeac v4.0.0
         run: |
           git clone --depth 1 --branch v4.0.0 \
             https://github.com/Parabeac/parabeac-core.git parabeac
+          rm -rf parabeac/pb-scripts     # skip Sketch installer
+          cd parabeac
+          dart pub get
 
-      - name: Remove broken Sketch installer
-        run: rm -rf parabeac/pb-scripts
-
-      - name: Get Dart dependencies
-        working-directory: parabeac
-        run: dart pub get
-
-      - name: Run Parabeac
-        working-directory: parabeac
+      # 4) Run Parabeac with your inputs
+      - name: Run Parabeac conversion
         run: |
-          dart run parabeac.dart \
-            -f $FIGMA_FILE_KEY \
-            -k $FIGMA_TOKEN \
-            -o ../generated
+          cd parabeac
+          dart parabeac.dart \
+            -f "${{ github.event.inputs.figma_file_key }}" \
+            -k "${{ github.event.inputs.figma_token }}" \
+            -o "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
 
-      - name: Upload generated code
+      # 5) Upload the result as a build artifact
+      - name: Upload generated Flutter code
         uses: actions/upload-artifact@v3
         with:
-          name: flutter-code
-          path: generated/
+          name: flutter_project
+          path: generated/${{ github.event.inputs.project_name }}
