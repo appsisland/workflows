@@ -16,8 +16,10 @@ on:
 jobs:
   parabeac:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Set up Dart
         uses: dart-lang/setup-dart@v1
@@ -25,17 +27,24 @@ jobs:
           sdk: stable
 
       - name: Clone Parabeac Core
-        run: git clone https://github.com/Parabeac/parabeac-core.git parabeac
+        run: |
+          git clone https://github.com/Parabeac/parabeac-core.git parabeac
+
+      - name: Install Parabeac dependencies
+        run: |
+          cd parabeac
+          dart pub get
 
       - name: Generate Flutter for ${{ github.event.inputs.project_name }}
         run: |
           mkdir -p generated/${{ github.event.inputs.project_name }}
-          dart parabeac/lib/parabeac.dart \
+          # Run the Parabeac CLI from the repo root
+          dart --enable-asserts parabeac/parabeac.dart \
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
             -o generated/${{ github.event.inputs.project_name }}
 
-      - name: Commit & push
+      - name: Commit & push generated code
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
