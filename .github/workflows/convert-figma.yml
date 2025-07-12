@@ -36,19 +36,18 @@ jobs:
 
       - name: Run Parabeac conversion
         run: |
-          # ensure our top-level output folder exists
-          mkdir -p "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
+          # ensure our top‐level 'generated' folder exists
+          mkdir -p "${{ github.workspace }}/generated"
 
           cd parabeac
           dart run parabeac.dart \
             -f "${{ github.event.inputs.figma_file_key }}" \
             -k "${{ github.event.inputs.figma_token }}" \
             -n "${{ github.event.inputs.project_name }}" \
-            -o "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
+            -o "${{ github.workspace }}/generated"
 
       - name: Upload generated Flutter code
         uses: actions/upload-artifact@v4
         with:
           name: flutter_project
           path: generated/${{ github.event.inputs.project_name }}/**
-
