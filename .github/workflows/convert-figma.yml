@@ -1,52 +1,48 @@
-name: Convert Figma → Flutter
+# .github/workflows/convert-figma.yml
+name: Parabeac Flutter Generation
 
 on:
   workflow_dispatch:
     inputs:
       figma_file_key:
-        description: 'Figma File Key'
+        description: 'Figma File Key (the ID after /file/ in your Figma URL)'
         required: true
       figma_token:
-        description: 'Figma Personal Access Token'
+        description: 'Your Figma Personal Access Token'
         required: true
       project_name:
-        description: 'Project name (used as folder)'
+        description: 'Directory name for generated Flutter code'
         required: true
 
 jobs:
   parabeac:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Dart 2.x
+      - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: '2.19.6'
+          sdk: stable
 
-      - name: Clone Parabeac Core with submodules
+      - name: Clone Parabeac-Core
         run: |
-          git clone https://github.com/Parabeac/parabeac-core.git parabeac
-          cd parabeac
-          git submodule update --init --recursive
+          git clone --depth=1 https://github.com/Parabeac/parabeac_core.git parabeac
 
-      - name: Make `pub` available & install dependencies
-        run: |
-          # Some scripts expect `pub` on PATH
-          sudo ln -s "$(which dart)" /usr/local/bin/pub || true
-          cd parabeac
-          dart pub get
+      - name: Install dependencies
+        working-directory: parabeac
+        run: dart pub get
 
-      - name: Generate Flutter project
+      - name: Generate Flutter code with Parabeac
+        working-directory: parabeac
         run: |
-          cd parabeac
-          mkdir -p ../generated/${{ github.event.inputs.project_name }}
-          dart --enable-asserts parabeac.dart \
+          dart run lib/main.dart \
             -f ${{ github.event.inputs.figma_file_key }} \
             -k ${{ github.event.inputs.figma_token }} \
-            -o ../generated/${{ github.event.inputs.project_name }}
+            -o ${{ github.workspace }}/generated/${{ github.event.inputs.project_name }} \
+            --project-type screens
 
       - name: Commit & push generated code
         run: |
@@ -55,3 +51,5 @@ jobs:
           git add generated/${{ github.event.inputs.project_name }}
           git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}"
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
