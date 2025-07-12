@@ -30,21 +30,22 @@ jobs:
         run: |
           git clone --depth 1 --branch v4.0.0 \
             https://github.com/Parabeac/parabeac-core.git parabeac
+          # skip Sketch-only installer
           rm -rf parabeac/pb-scripts
           cd parabeac
           dart pub get
 
       - name: Run Parabeac conversion
         run: |
-          # ensure our top‐level 'generated' folder exists
-          mkdir -p "${{ github.workspace }}/generated"
+          # create exactly the output dir we want
+          mkdir -p "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
 
           cd parabeac
           dart run parabeac.dart \
             -f "${{ github.event.inputs.figma_file_key }}" \
             -k "${{ github.event.inputs.figma_token }}" \
             -n "${{ github.event.inputs.project_name }}" \
-            -o "${{ github.workspace }}/generated"
+            -o "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
 
       - name: Upload generated Flutter code
         uses: actions/upload-artifact@v4
