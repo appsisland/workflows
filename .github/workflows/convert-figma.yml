@@ -1,81 +1,47 @@
+# .github/workflows/convert-figma.yml
 name: Convert Figma → Flutter
 
 on:
   workflow_dispatch:
-    inputs:
-      figma_file_key:
-        description: 'Figma File Key'
-        required: true
-      figma_token:
-        description: 'Figma Personal Access Token'
-        required: true
-      project_name:
-        description: 'Project name (used as folder)'
-        required: true
 
 jobs:
   parabeac:
     runs-on: ubuntu-latest
     env:
-      SAC_ENDPOINT: "1"
-      PBDL_LOG_LEVEL: DEBUG
+      FIGMA_FILE_KEY: ${{ secrets.FIGMA_FILE_KEY }}
+      FIGMA_TOKEN:    ${{ secrets.FIGMA_TOKEN }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Dart 2.x (compatible with Parabeac Core)
+      - name: Install Dart 2.19 SDK
         uses: dart-lang/setup-dart@v1
         with:
           sdk: '2.19.6'
 
-      - name: "Debug: Dart & env"
+      - name: Clone Parabeac Core
         run: |
-          dart --version
-          echo "Runner env:"
-          env
+          git clone --depth 1 --branch v4.0.0 \
+            https://github.com/Parabeac/parabeac-core.git parabeac
 
-      - name: Clone Parabeac Core @ v4.0.0
-        run: |
-          git clone --depth=1 --branch v4.0.0 https://github.com/Parabeac/parabeac-core.git parabeac
-          echo "Parabeac-Core checked out at:"
-          (cd parabeac && git rev-parse HEAD)
+      - name: Remove broken Sketch installer
+        run: rm -rf parabeac/pb-scripts
 
-      - name: List Parabeac Core files
-        run: |
-          ls -R parabeac
+      - name: Get Dart dependencies
+        working-directory: parabeac
+        run: dart pub get
 
-      - name: Install Parabeac dependencies
+      - name: Run Parabeac
+        working-directory: parabeac
         run: |
-          cd parabeac
-          dart pub get
+          dart run parabeac.dart \
+            -f $FIGMA_FILE_KEY \
+            -k $FIGMA_TOKEN \
+            -o ../generated
 
-      - name: Generate Flutter for "${{ github.event.inputs.project_name }}"
-        run: |
-          # Use absolute path to handle spaces robustly
-          OUTPUT_DIR="${GITHUB_WORKSPACE}/generated/${{ github.event.inputs.project_name }}"
-          mkdir -p "$OUTPUT_DIR"
-          cd parabeac
-          echo "→ Generating from file key: ${{ github.event.inputs.figma_file_key }}"
-          echo "→ Output dir: $OUTPUT_DIR"
-          dart --enable-asserts parabeac.dart \
-            -f "${{ github.event.inputs.figma_file_key }}" \
-            -k "${{ github.event.inputs.figma_token }}" \
-            -o "$OUTPUT_DIR" \
-          || { echo "‼️ Parabeac failed with exit code $?"; exit 1; }
-
-      - name: List generated output
-        run: |
-          echo "📂 Contents of generated/${{ github.event.inputs.project_name }}:"
-          ls -R "${GITHUB_WORKSPACE}/generated/${{ github.event.inputs.project_name }}" || echo " (no files!)"
-
-      - name: "Commit & push generated code"
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "generated/${{ github.event.inputs.project_name }}"
-          git diff-index --quiet HEAD \
-            || git commit -m "chore: auto-generate Flutter for ${{ github.event.inputs.project_name }}"
-          git push
+      - name: Upload generated code
+        uses: actions/upload-artifact@v3
+        with:
+          name: flutter-code
+          path: generated/
