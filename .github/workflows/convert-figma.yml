@@ -16,6 +16,7 @@ on:
 jobs:
   parabeac:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15  # fail if it hangs
 
     steps:
       - name: Checkout repo
@@ -27,8 +28,7 @@ jobs:
           sdk: '2.19.6'
 
       - name: Clone Parabeac Core
-        run: |
-          git clone --depth=1 https://github.com/Parabeac/parabeac_core.git parabeac
+        run: git clone --depth=1 https://github.com/Parabeac/parabeac_core.git parabeac
 
       - name: Install Parabeac dependencies
         working-directory: parabeac
@@ -36,12 +36,16 @@ jobs:
 
       - name: Generate Flutter code
         working-directory: parabeac
+        env:
+          PB_METRICS: 'false'
         run: |
-          mkdir -p ${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}
+          mkdir -p "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}"
           dart run lib/main.dart \
-            -f ${{ github.event.inputs.figma_file_key }} \
-            -k ${{ github.event.inputs.figma_token }} \
-            -o ${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}
+            -f "${{ github.event.inputs.figma_file_key }}" \
+            -k "${{ github.event.inputs.figma_token }}" \
+            -o "${{ github.workspace }}/generated/${{ github.event.inputs.project_name }}" \
+            -n "${{ github.event.inputs.project_name }}" \
+            --project-type screens
 
       - name: Commit & push generated code
         env:
